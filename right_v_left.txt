@@ -1,0 +1,26 @@
+the choice for how to expand the buffer:
+
+*** one main concern is that by traveling to the right first, i believe you are more likely to find new and
+variable data points because the previous data points were already considered (partly in the 5 data point buffer).
+If variable data points are found first and don't break the threshold, the stdev is increased significantly but
+the data point is added to the buffer. This leaves less room to include variable data points. For example, moving 
+one direction and increasing the stdev to just below the threshold would prevent you from moving the other way
+entirely or for more than 1 value. Moving the other way first you would theoretically find 2, 3, etc 
+values before increasing the stdev above the threshold. So is there a significant difference in moving right 
+then left? Moving left will check previous data points first, meaning there is a higher chance of double checking
+areas and potentially increasing the overall size of the flat area. 
+
+alternate right then left in the same loop:
+- prioritized right data points because they are new
+- traverses through data faster because the loop is set to the right index after each expand
+
+alternate left then right in the same loop:
+- prioritized left data (passed data) which is more likely to double check areas and miss less flat areas
+
+alternate right then left, the alternate left then right and take the larger:
+- longer run time, repeatative checks with unknown benefits
+- prioritizes the largest flat area possible with alternating checks
+
+move as far right independantly and as far left independantly then combine:
+- prioritizes the largest flat area possible of any previous method
+- can have errors in situations where starting index is a pivot point
