@@ -1,5 +1,13 @@
 import numpy as np
 import statistics
+import os
+import sys
+
+args = sys.argv
+
+algorithm = "flatness"
+if len(args) == 1 and args[0] == "rl":
+    algorithm = "flatness_rl"
 
 print('='*45)
 print('=' + ' '*15 + 'Starting Run' + ' '*16 + '=')
@@ -7,8 +15,8 @@ print('='*45)
 
 #inputTrace = list(map(lambda x: round(x, 2), (np.random.rand(1,1000) *10).tolist()[0]))
 #indexs = list(range(0,len(inputTrace)))
-
-flpath = r'/home/cjennings/Desktop/workspace/flatness_detection/example_data/Line1.csv'
+datafile = "Line1.csv"
+flpath = os.path.join(os.getcwd(), "example_data", datafile)
 
 data = open(flpath, 'r').readlines()
 formated_data = data
@@ -20,7 +28,16 @@ indexs = list(range(0,len(trace_k)))
 # change standard deviation calculation to use a fixed average from the original buffer.
 # should make the algorithm more likely to trip threshold on gradual change.
 
+def print_results(results):
+    for entry in results:
+        print('+'*20)
+        print("Starting Index: " + str(entry))
+        print("Indexes: " + str(results[entry][0]))
+        print("Buffer Size: " + str(results[entry][1]))
+
+
 def flatness (inputTrace, indexs):
+    result = {}
     buffer_size = 5
     buffer = inputTrace[0:buffer_size]
     # threshold determines the stdev value that cannot be exceded. Should consider wether to use
@@ -35,9 +52,6 @@ def flatness (inputTrace, indexs):
             # left and right used to track if buffer should expand in either direction
             left = True
             right = True
-            print("=====================")
-            print(idx)
-            print(stdev)
             # index of expanded buffer on right and left
             r_idx = idx
             l_idx = idx-buffer_size-1
@@ -70,14 +84,13 @@ def flatness (inputTrace, indexs):
                     if stdev >= threshold:
                         left = False
                         buffer = buffer[1:]
+            result[idx] = ([(l_idx, idx, r_idx), len(buffer), stdev])
             # set idx to the last right index so the loop starts after the end of the last flat area
             idx = r_idx
-            # Log information about the buffer
-            print("Buffer size = " + str(len(buffer)))
-            print(l_idx)
-            print(r_idx)
         # Increment main loop index
         idx += 1
+        
+    return result
         
 def flatness_rl (inputTrace, indexs):
     buffer_size = 5
@@ -86,6 +99,7 @@ def flatness_rl (inputTrace, indexs):
     # static threshold or variable (percent based increase. ie stdv < 0.01 then cannot excede 20% increase
     threshold = 0.01
     idx = buffer_size
+    result = {}
 
     while (idx in indexs[buffer_size:]):
         buffer = inputTrace[(idx-buffer_size):idx]
@@ -93,27 +107,29 @@ def flatness_rl (inputTrace, indexs):
         if stdev < threshold:
             # left and right used to track if buffer should expand in either direction
             expanding = True
-            print("=====================")
-            print(idx)
-            print(stdev)
             # index of expanded buffer on right and left
             r_idx = idx
             l_idx = idx-buffer_size-1
             while expanding:
                 r_stdev = None
                 l_stdev = None
+                # Check if there is data to the right, then calculate the stdev with the new point
                 if r_idx < len(inputTrace):
                     r_val = buffer + [inputTrace[r_idx]]
                     r_stdev = statistics.stdev(r_val)
+                    # if the point pushes the stdev over the threshold, skip this point
                     if r_stdev > threshold:
                         r_stdev = None
-
+                        
+                # Check if there is data to the left, then calculate the stdev with the new point
                 if l_idx >= 0:
                     l_val = buffer + [inputTrace[l_idx]]
                     l_stdev = statistics.stdev(l_val)
+                    # if the point pushes the stdev over the threshold, skip this point
                     if l_stdev > threshold:
                         l_stdev = None
 
+                # use the data point that increases the stdev the least. If none are available the buffer is done
                 if r_stdev and l_stdev:
                     if r_stdev < l_stdev:
                         buffer.append(inputTrace[r_idx])
@@ -128,16 +144,17 @@ def flatness_rl (inputTrace, indexs):
                     buffer.append(inputTrace[l_idx])
                     l_idx -= 1
                 else:
+                    # add the result to the list and set the main loop idx to the further index checked
+                    result[idx] = ([(l_idx, idx, r_idx), len(buffer)])
                     idx = r_idx + 1
                     break
-
-            # Log information about the buffer
-            print("Buffer size = " + str(len(buffer)))
-            print(l_idx)
-            print(r_idx)
         # Increment main loop index
         idx += 1
+    return result
 
-flatness_rl(trace_k, indexs)
+results = eval(algorithm)(trace_k, indexs)
+
+print_results(results)
+
 
     
