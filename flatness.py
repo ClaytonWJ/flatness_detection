@@ -6,7 +6,7 @@ import sys
 args = sys.argv
 
 algorithm = "flatness"
-if len(args) == 1 and args[0] == "rl":
+if len(args) == 2 and args[1] == "rl":
     algorithm = "flatness_rl"
 
 print('='*45)
@@ -28,12 +28,31 @@ indexs = list(range(0,len(trace_k)))
 # change standard deviation calculation to use a fixed average from the original buffer.
 # should make the algorithm more likely to trip threshold on gradual change.
 
+def process_results(results):
+    indexes = [[idx, range(results[idx][0][0], results[idx][0][2]), results[idx][1]] for idx in results.keys()]
+    good_idxs = []
+    for i in indexes:
+        if not any([ranges[1] for ranges in indexes if (not ranges == i and 
+                                                        i[1][0] in ranges[1] and 
+                                                        i[1][-1] in ranges[1])]):
+            good_idxs.append(i)
+            
+    return good_idxs
+
+
 def print_results(results):
     for entry in results:
-        print('+'*20)
-        print("Starting Index: " + str(entry))
-        print("Indexes: " + str(results[entry][0]))
-        print("Buffer Size: " + str(results[entry][1]))
+        if isinstance(entry, dict):
+            print('+'*20)
+            print("Starting Index: " + str(entry))
+            print("Indexes: " + str(results[entry][0]))
+            print("Buffer Size: " + str(results[entry][1]))
+        else:
+            print('+'*20)
+            print("Starting Index: " + str(entry[0]))
+            print("Indexes: " + str(entry[1]))
+            print("Buffer Size: " + str(entry[2]))
+        
 
 
 def flatness (inputTrace, indexs):
@@ -154,7 +173,7 @@ def flatness_rl (inputTrace, indexs):
 
 results = eval(algorithm)(trace_k, indexs)
 
-print_results(results)
+print_results(process_results(results))
 
 
     
