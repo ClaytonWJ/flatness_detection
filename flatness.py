@@ -2,41 +2,19 @@ import numpy as np
 import statistics
 import os
 import sys
-
-args = sys.argv
-
-algorithm = "flatness"
-if len(args) == 2 and args[1] == "rl":
-    algorithm = "flatness_rl"
-
-print('='*45)
-print('=' + ' '*15 + 'Starting Run' + ' '*16 + '=')
-print('='*45)
-
-#inputTrace = list(map(lambda x: round(x, 2), (np.random.rand(1,1000) *10).tolist()[0]))
-#indexs = list(range(0,len(inputTrace)))
-datafile = "Line1.csv"
-flpath = os.path.join(os.getcwd(), "example_data", datafile)
-
-data = open(flpath, 'r').readlines()
-formated_data = data
-headers = data[48]
-trace_k = [float(x.split(',')[3]) for x in data[50:]]
-
-indexs = list(range(0,len(trace_k)))
-#print(inputTrace)
-# change standard deviation calculation to use a fixed average from the original buffer.
-# should make the algorithm more likely to trip threshold on gradual change.
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 
 def process_results(results):
-    indexes = [[idx, range(results[idx][0][0], results[idx][0][2]), results[idx][1]] for idx in results.keys()]
+    indexes = [[idx, range(results[idx][0][0], results[idx][0][2]),
+                           results[idx][1]] for idx in results.keys()]
     good_idxs = []
     for i in indexes:
-        if not any([ranges[1] for ranges in indexes if (not ranges == i and 
-                                                        i[1][0] in ranges[1] and 
+        if not any([ranges[1] for ranges in indexes if (not ranges == i and
+                                                        i[1][0] in ranges[1] and
                                                         i[1][-1] in ranges[1])]):
             good_idxs.append(i)
-            
+
     return good_idxs
 
 
@@ -52,8 +30,37 @@ def print_results(results):
             print("Starting Index: " + str(entry[0]))
             print("Indexes: " + str(entry[1]))
             print("Buffer Size: " + str(entry[2]))
-        
 
+
+def plot(trace, k_r, results):
+
+    data_points_dic = {}
+    data_points = []
+
+    for entry in results:
+        # this works when you don't run this in the function process_results()
+        l_idx, _ , r_idx = results[entry][0]
+        stdev = results[entry][2]
+
+        for idx in range(l_idx, r_idx+1):
+            data_points_dic[idx] = stdev
+
+    for idx in range(len(trace)):
+        if idx not in data_points_dic:
+            data_points.append(0)
+        else:
+            data_points.append(1)
+
+    x_points = trace
+    y_points = k_r
+
+    plt.title("Flatness Detection")
+    plt.xlabel("Trace")
+    plt.ylabel("K_r")
+
+    plt.scatter(x_points, y_points, c=data_points, cmap="jet", norm=Normalize(min(data_points), max(data_points)))
+    plt.colorbar()
+    plt.show()
 
 def flatness (inputTrace, indexs):
     result = {}
@@ -171,9 +178,39 @@ def flatness_rl (inputTrace, indexs):
         idx += 1
     return result
 
-results = eval(algorithm)(trace_k, indexs)
 
-print_results(process_results(results))
+if __name__ == "__main__":
+    
+    args = sys.argv 
 
+    algorithm = "flatness"
 
+    if len(args) == 2 and args[1] == "rl":
+        algorithm = "flatness_rl"
+
+    print('='*45)
+    print('=' + ' '*15 + 'Starting Run' + ' '*16 + '=')
+    print('='*45)
+
+    # inputTrace = list(map(lambda x: round(x, 2), (np.random.rand(1,1000) *10).tolist()[0]))
+    # indexs = list(range(0,len(inputTrace)))
+    datafile = "Line1.csv"
+    flpath = os.path.join(os.getcwd(), "example_data", datafile)
+
+    data = open(flpath, 'r').readlines()
+    formated_data = data
+    headers = data[48]
+    trace_k = [float(x.split(',')[3]) for x in data[50:]]
+    trace = [float(x.split(',')[0]) for x in data[50:]]
+
+    indexs = list(range(0,len(trace_k)))
+
+    results = eval(algorithm)(trace_k, indexs)
+
+    #print_results(process_results(results))
+
+    # change standard deviation calculation to use a fixed average from the original buffer.
+    # should make the algorithm more likely to trip threshold on gradual change.
+
+    plot(trace, trace_k, results)
     
