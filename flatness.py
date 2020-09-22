@@ -31,6 +31,41 @@ def print_results(results):
             print("Indexes: " + str(entry[1]))
             print("Buffer Size: " + str(entry[2]))
 
+def plot_val(trace, k_r, results):
+
+    data_points_dic = {}
+    data_points = []
+    segments = [(results[x][0][0], results[x][0][2]) for x in results]
+
+    for entry in results:
+        # this works when you don't run this in the function process_results()
+        l_idx, _ , r_idx = results[entry][0]
+        stdev = results[entry][2]
+
+        for idx in range(l_idx, r_idx+1):
+            data_points_dic[idx] = stdev
+
+    for idx in range(len(trace)):
+        if idx in data_points_dic:
+            data_points.append(0)
+        else:
+            data_points.append(k_r[idx])
+
+    x_points = trace
+    y_points = k_r
+
+    plt.figure(figsize=(16,8))
+
+    plt.title("Flatness Detection")
+    plt.xlabel("Trace")
+    plt.ylabel("K_r")
+
+    plt.plot(x_points, y_points)
+    for seg in segments:
+        plt.plot(x_points[seg[0]:seg[1]], y_points[seg[0]:seg[1]], color='r')
+    # plt.colorbar()
+    # plt.show()
+    plt.savefig("fig_range.png")
 
 def plot(trace, k_r, results):
 
@@ -83,7 +118,7 @@ def flatness (inputTrace, indexs):
             right = True
             # index of expanded buffer on right and left
             r_idx = idx
-            l_idx = idx-buffer_size-1
+            l_idx = idx-buffer_size
             mean = sum(buffer)/len(buffer)
             allowed_range = (mean - 2*stdev, mean + 2*stdev)
             while left or right:
@@ -111,7 +146,7 @@ def flatness (inputTrace, indexs):
                         l_idx += 1
                     else:
                         left = False
-            result[idx] = ([(l_idx, idx, r_idx), len(buffer), statistics.stdev(buffer)])
+            result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer)])
             # set idx to the last right index so the loop starts after the end of the last flat area
             idx = r_idx
         # Increment main loop index
@@ -136,7 +171,7 @@ def flatness_rl (inputTrace, indexs):
             expanding = True
             # index of expanded buffer on right and left
             r_idx = idx
-            l_idx = idx-buffer_size-1
+            l_idx = idx-buffer_size
             while expanding:
                 r_stdev = None
                 l_stdev = None
@@ -172,8 +207,8 @@ def flatness_rl (inputTrace, indexs):
                     l_idx -= 1
                 else:
                     # add the result to the list and set the main loop idx to the further index checked
-                    result[idx] = ([(l_idx, idx, r_idx), len(buffer), statistics.stdev(buffer)])
-                    idx = r_idx + 1
+                    result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer)])
+                    idx = r_idx
                     break
         # Increment main loop index
         idx += 1
@@ -184,6 +219,7 @@ if __name__ == "__main__":
     
     args = sys.argv 
 
+    print (args)
     algorithm = "flatness"
 
     if len(args) == 2 and args[1] == "rl":
@@ -213,5 +249,5 @@ if __name__ == "__main__":
     # change standard deviation calculation to use a fixed average from the original buffer.
     # should make the algorithm more likely to trip threshold on gradual change.
 
-    plot(trace, trace_k, results)
+    plot_val(trace, trace_k, results)
     
