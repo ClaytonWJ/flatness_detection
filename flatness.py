@@ -54,6 +54,8 @@ def plot(trace, k_r, results):
     x_points = trace
     y_points = k_r
 
+    plt.figure(figsize=(16,8))
+
     plt.title("Flatness Detection")
     plt.xlabel("Trace")
     plt.ylabel("K_r")
@@ -61,10 +63,11 @@ def plot(trace, k_r, results):
     plt.scatter(x_points, y_points, c=data_points, cmap="jet", norm=Normalize(min(data_points), max(data_points)))
     plt.colorbar()
     plt.show()
+    # plt.savefig("fig1.png")
 
 def flatness (inputTrace, indexs):
     result = {}
-    buffer_size = 5
+    buffer_size = 20
     buffer = inputTrace[0:buffer_size]
     # threshold determines the stdev value that cannot be exceded. Should consider wether to use
     # static threshold or variable (percent based increase. ie stdv < 0.01 then cannot excede 20% increase
