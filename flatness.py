@@ -62,8 +62,8 @@ def plot(trace, k_r, results):
 
     plt.scatter(x_points, y_points, c=data_points, cmap="jet", norm=Normalize(min(data_points), max(data_points)))
     plt.colorbar()
-    plt.show()
-    # plt.savefig("fig1.png")
+    # plt.show()
+    plt.savefig("fig_range.png")
 
 def flatness (inputTrace, indexs):
     result = {}
@@ -84,6 +84,8 @@ def flatness (inputTrace, indexs):
             # index of expanded buffer on right and left
             r_idx = idx
             l_idx = idx-buffer_size-1
+            mean = sum(buffer)/len(buffer)
+            allowed_range = (mean - 2*stdev, mean + 2*stdev)
             while left or right:
             # Should consider if moving right first then left each loop is ideal. What about right as far as possible
             # then left, or visa vera. Or expanding buffer at the same time.
@@ -92,28 +94,24 @@ def flatness (inputTrace, indexs):
                         # stop expanding right if passed last index
                         right = False
                         continue
-                    # add next item on the right to the  buffer and recalculate stdev, remove the item if it fails
-                    # the threshold and stop expanding right
-                    buffer.append(inputTrace[r_idx])
-                    stdev = statistics.stdev(buffer)
-                    r_idx += 1
-                    if stdev >= threshold:
+
+                    if allowed_range[0] <= inputTrace[r_idx] <= allowed_range[1]:
+                        buffer.append(inputTrace[r_idx])
+                        r_idx += 1
+                    else:
                         right = False
-                        buffer = buffer[:-1]
                 if left:
                     if l_idx < 0:
                         # stop expanding left if past first index
                         left = False
                         continue
-                    # add next item on the left to the buffer and recalculate stdev, remove the item if it fails 
-                    # the threshold and stop expanding left
-                    buffer.insert(0, inputTrace[l_idx])
-                    stdev = statistics.stdev(buffer)
-                    l_idx -= 1
-                    if stdev >= threshold:
+
+                    if allowed_range[0] <= inputTrace[l_idx] <= allowed_range[1]:
+                        buffer.append(inputTrace[l_idx])
+                        l_idx += 1
+                    else:
                         left = False
-                        buffer = buffer[1:]
-            result[idx] = ([(l_idx, idx, r_idx), len(buffer), stdev])
+            result[idx] = ([(l_idx, idx, r_idx), len(buffer), statistics.stdev(buffer)])
             # set idx to the last right index so the loop starts after the end of the last flat area
             idx = r_idx
         # Increment main loop index
@@ -122,7 +120,7 @@ def flatness (inputTrace, indexs):
     return result
         
 def flatness_rl (inputTrace, indexs):
-    buffer_size = 5
+    buffer_size = 20
     buffer = inputTrace[0:buffer_size]
     # threshold determines the stdev value that cannot be exceded. Should consider wether to use
     # static threshold or variable (percent based increase. ie stdv < 0.01 then cannot excede 20% increase
@@ -174,7 +172,7 @@ def flatness_rl (inputTrace, indexs):
                     l_idx -= 1
                 else:
                     # add the result to the list and set the main loop idx to the further index checked
-                    result[idx] = ([(l_idx, idx, r_idx), len(buffer)])
+                    result[idx] = ([(l_idx, idx, r_idx), len(buffer), statistics.stdev(buffer)])
                     idx = r_idx + 1
                     break
         # Increment main loop index
