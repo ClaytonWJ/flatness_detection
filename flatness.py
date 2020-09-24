@@ -8,12 +8,12 @@ from matplotlib.colors import Normalize
 def process_results(results):
     indexes = [[idx, range(results[idx][0][0], results[idx][0][2]),
                            results[idx][1]] for idx in results.keys()]
-    good_idxs = []
+    good_idxs = {}
     for i in indexes:
         if not any([ranges[1] for ranges in indexes if (not ranges == i and
                                                         i[1][0] in ranges[1] and
                                                         i[1][-1] in ranges[1])]):
-            good_idxs.append(i)
+            good_idxs[i[0]] = [(i[1][0], i[0], i[1][-1]),i[2]]
 
     return good_idxs
 
@@ -59,6 +59,7 @@ def plot_val(trace, k_r, results):
     plt.title("Flatness Detection")
     plt.xlabel("Trace")
     plt.ylabel("K_r")
+    plt.ylim((1,3))
 
     plt.plot(x_points, y_points)
     for seg in segments:
@@ -103,10 +104,9 @@ def plot(trace, k_r, results):
 def flatness (inputTrace, indexs):
     result = {}
     buffer_size = 20
-    buffer = inputTrace[0:buffer_size]
     # threshold determines the stdev value that cannot be exceded. Should consider wether to use
     # static threshold or variable (percent based increase. ie stdv < 0.01 then cannot excede 20% increase
-    threshold = 0.01
+    threshold = 0.025
     idx = buffer_size
 
     while (idx in indexs[buffer_size:]):
@@ -143,7 +143,7 @@ def flatness (inputTrace, indexs):
 
                     if allowed_range[0] <= inputTrace[l_idx] <= allowed_range[1]:
                         buffer.append(inputTrace[l_idx])
-                        l_idx += 1
+                        l_idx -= 1
                     else:
                         left = False
             result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer)])
@@ -159,7 +159,7 @@ def flatness_rl (inputTrace, indexs):
     buffer = inputTrace[0:buffer_size]
     # threshold determines the stdev value that cannot be exceded. Should consider wether to use
     # static threshold or variable (percent based increase. ie stdv < 0.01 then cannot excede 20% increase
-    threshold = 0.01
+    threshold = 0.025
     idx = buffer_size
     result = {}
 
@@ -231,7 +231,7 @@ if __name__ == "__main__":
 
     # inputTrace = list(map(lambda x: round(x, 2), (np.random.rand(1,1000) *10).tolist()[0]))
     # indexs = list(range(0,len(inputTrace)))
-    datafile = "Line1.csv"
+    datafile = "Line6.csv"
     flpath = os.path.join(os.getcwd(), "example_data", datafile)
 
     data = open(flpath, 'r').readlines()
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
     results = eval(algorithm)(trace_k, indexs)
 
-    #print_results(process_results(results))
+    temp = process_results(results)
 
     # change standard deviation calculation to use a fixed average from the original buffer.
     # should make the algorithm more likely to trip threshold on gradual change.
