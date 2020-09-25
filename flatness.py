@@ -68,39 +68,6 @@ def plot_val(trace, k_r, results):
     # plt.show()
     plt.savefig("fig_range.png")
 
-def plot(trace, k_r, results):
-
-    data_points_dic = {}
-    data_points = []
-
-    for entry in results:
-        # this works when you don't run this in the function process_results()
-        l_idx, _ , r_idx = results[entry][0]
-        stdev = results[entry][2]
-
-        for idx in range(l_idx, r_idx+1):
-            data_points_dic[idx] = stdev
-
-    for idx in range(len(trace)):
-        if idx not in data_points_dic:
-            data_points.append(0)
-        else:
-            data_points.append(1)
-
-    x_points = trace
-    y_points = k_r
-
-    plt.figure(figsize=(16,8))
-
-    plt.title("Flatness Detection")
-    plt.xlabel("Trace")
-    plt.ylabel("K_r")
-
-    plt.scatter(x_points, y_points, c=data_points, cmap="jet", norm=Normalize(min(data_points), max(data_points)))
-    plt.colorbar()
-    # plt.show()
-    plt.savefig("fig_range.png")
-
 def flatness (inputTrace, indexs):
     result = {}
     buffer_size = 20
@@ -153,66 +120,6 @@ def flatness (inputTrace, indexs):
         idx += 1
         
     return result
-        
-def flatness_rl (inputTrace, indexs):
-    buffer_size = 20
-    buffer = inputTrace[0:buffer_size]
-    # threshold determines the stdev value that cannot be exceded. Should consider wether to use
-    # static threshold or variable (percent based increase. ie stdv < 0.01 then cannot excede 20% increase
-    threshold = 0.025
-    idx = buffer_size
-    result = {}
-
-    while (idx in indexs[buffer_size:]):
-        buffer = inputTrace[(idx-buffer_size):idx]
-        stdev = statistics.stdev(buffer)
-        if stdev < threshold:
-            # left and right used to track if buffer should expand in either direction
-            expanding = True
-            # index of expanded buffer on right and left
-            r_idx = idx
-            l_idx = idx-buffer_size
-            while expanding:
-                r_stdev = None
-                l_stdev = None
-                # Check if there is data to the right, then calculate the stdev with the new point
-                if r_idx < len(inputTrace):
-                    r_val = buffer + [inputTrace[r_idx]]
-                    r_stdev = statistics.stdev(r_val)
-                    # if the point pushes the stdev over the threshold, skip this point
-                    if r_stdev > threshold:
-                        r_stdev = None
-                        
-                # Check if there is data to the left, then calculate the stdev with the new point
-                if l_idx >= 0:
-                    l_val = buffer + [inputTrace[l_idx]]
-                    l_stdev = statistics.stdev(l_val)
-                    # if the point pushes the stdev over the threshold, skip this point
-                    if l_stdev > threshold:
-                        l_stdev = None
-
-                # use the data point that increases the stdev the least. If none are available the buffer is done
-                if r_stdev and l_stdev:
-                    if r_stdev < l_stdev:
-                        buffer.append(inputTrace[r_idx])
-                        r_idx += 1
-                    else:
-                        buffer.append(inputTrace[l_idx])
-                        l_idx -= 1
-                elif r_stdev:
-                    buffer.append(inputTrace[r_idx])
-                    r_idx += 1
-                elif l_stdev:
-                    buffer.append(inputTrace[l_idx])
-                    l_idx -= 1
-                else:
-                    # add the result to the list and set the main loop idx to the further index checked
-                    result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer)])
-                    idx = r_idx
-                    break
-        # Increment main loop index
-        idx += 1
-    return result
 
 
 if __name__ == "__main__":
@@ -222,8 +129,8 @@ if __name__ == "__main__":
     print (args)
     algorithm = "flatness"
 
-    if len(args) == 2 and args[1] == "rl":
-        algorithm = "flatness_rl"
+    # if len(args) == 2 and args[1] == "rl":
+    #     algorithm = "flatness_rl"
 
     print('='*45)
     print('=' + ' '*15 + 'Starting Run' + ' '*16 + '=')
@@ -231,7 +138,7 @@ if __name__ == "__main__":
 
     # inputTrace = list(map(lambda x: round(x, 2), (np.random.rand(1,1000) *10).tolist()[0]))
     # indexs = list(range(0,len(inputTrace)))
-    datafile = "Line6.csv"
+    datafile = "Line1.csv"
     flpath = os.path.join(os.getcwd(), "example_data", datafile)
 
     data = open(flpath, 'r').readlines()
