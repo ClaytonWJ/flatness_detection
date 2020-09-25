@@ -101,6 +101,8 @@ def flatness (inputTrace, indexs):
     while (idx in indexs[buffer_size:]):
         # Set the buffer to the x number of points before the current index
         buffer = inputTrace[(idx-buffer_size):idx]
+        # number of standard deviation to consider valid
+        stdv_factor = 2
         # calculate the standard deviation on the point within the buffer and check if it meats the threshold condition
         stdev = statistics.stdev(buffer)
         if stdev < threshold:
@@ -113,7 +115,7 @@ def flatness (inputTrace, indexs):
 
             mean = sum(buffer)/len(buffer)
             # Calculate 2 standard deviations above and below and use it as the range of accepted values
-            allowed_range = (mean - 2*stdev, mean + 2*stdev)
+            allowed_range = (mean - stdv_factor*threshold, mean + stdv_factor*threshold)
             while left or right:
                 # Expansion loop. This loop will attempt to add points to the existing buffer based on if the new point
                 # is within the allowed_range. When it cannot expand further it returns the resulting list of points
