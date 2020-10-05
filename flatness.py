@@ -19,15 +19,31 @@ def remove_duplicate_ranges(results):
                            results[idx][1]] for idx in results.keys()]
     good_idxs = {}
     # Check if any result's range is contained completely within any of the other results. If so, remove it as its
-    # a redundant result
+    # a redundant result  
     for i in indexes:
         if not any([ranges[1] for ranges in indexes if (not ranges == i and
                                                         i[1][0] in ranges[1] and
                                                         i[1][-1] in ranges[1])]):
-            good_idxs[i[0]] = [(i[1][0], i[0], i[1][-1]), i[2]]
+            good_idxs[i[0]] = results[i[0]]
 
     # Return the filtered results in a dictionary format
     return good_idxs
+
+
+def generate_results(results):
+
+    longest_flat_area = max(results, key=lambda k: results[k][1])
+    max_flat_area = max(results, key=lambda k: results[k][3])
+    min_flat_area = min(results, key=lambda k: results[k][3])
+
+    average_val = sum([results[val][3] for val in results]) / len(results)
+
+    average_flat_area = min(results, key=lambda k: abs(results[k][3] - average_val))
+
+    return {'max': results[max_flat_area], 
+            'min': results[min_flat_area], 
+            'average': results[average_flat_area],
+            'longest': results[longest_flat_area]}
 
 
 def print_results(results):
@@ -47,6 +63,51 @@ def print_results(results):
             print("Starting Index: " + str(entry[0]))
             print("Indexes: " + str(entry[1]))
             print("Buffer Size: " + str(entry[2]))
+
+def plot_generated_results(trace, k_r, results, save_figure=False, fig_name="flatness", fig_type="png"):
+    '''
+    Function to plot the results of the algorithm using matplotlib. The function will create a line plot of the original
+    data (x = trace number, y = Plot parameter) and plot the indexes identified as flat overtop the original data in red.
+    :param trace: List of Trace Numbers
+    :param k_r: List of Values
+    :param results: Result dictionary from flatness algorithm
+    :return:
+    '''
+    # data_points_dic = {}
+    # data_points = []
+
+    x_points = trace
+    y_points = k_r
+
+    plt.figure(figsize=(16,8))
+
+    plt.title("Flatness Detection")
+    plt.xlabel("Trace")
+    plt.ylabel("K_r")
+    plt.ylim((0,5))
+
+    plt.plot(x_points, y_points)
+
+    print (results)
+    if results.get('max'):
+        idx = results['max'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='r')
+    if results.get('min'):
+        idx = results['min'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='yellow')
+    if results.get('average'):
+        idx = results['average'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='tab:orange')
+    if results.get('longest'):
+        idx = results['longest'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='c')
+
+    if save_figure:
+        plt.savefig(fig_name + "." + fig_type)
+    else:
+        plt.show()
+
+    plt.close()
 
 def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_type="png"):
     '''
@@ -113,7 +174,7 @@ def flatness (inputTrace, indexs):
             left = True
             right = True
             # index of expanded buffer on right and left
-            r_idx = idx + 1
+            r_idx = idx
             l_idx = idx-buffer_size
 
             mean = sum(buffer)/len(buffer)
@@ -123,6 +184,7 @@ def flatness (inputTrace, indexs):
                 # Expansion loop. This loop will attempt to add points to the existing buffer based on if the new point
                 # is within the allowed_range. When it cannot expand further it returns the resulting list of points
                 if right:
+                    r_idx += 1
                     if r_idx >= len(inputTrace):
                         # stop expanding right if passed last index
                         right = False
@@ -130,10 +192,10 @@ def flatness (inputTrace, indexs):
                     # if the value is within the allowed_range add it to the buffer and move the right index
                     if allowed_range[0] <= inputTrace[r_idx] <= allowed_range[1]:
                         buffer.append(inputTrace[r_idx])
-                        r_idx += 1
                     else:
                         right = False
                 if left:
+                    l_idx -=1
                     if l_idx < 0:
                         # stop expanding left if past first index
                         left = False
@@ -141,11 +203,10 @@ def flatness (inputTrace, indexs):
                     # if the value is within the allowed_range add it to the buffer and move the left index
                     if allowed_range[0] <= inputTrace[l_idx] <= allowed_range[1]:
                         buffer.append(inputTrace[l_idx])
-                        l_idx -= 1
                     else:
                         left = False
             # remove the +/- from left and right index because it always ends on a failed check
-            result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer)])
+            result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer), sum(buffer)/len(buffer)])
             # set idx to the last right index + buffer size so the main loop checks the next new points in the dataset
             idx = r_idx + buffer_size - 1
         # Increment main loop index
@@ -192,7 +253,10 @@ if __name__ == "__main__":
 
         processed_results = remove_duplicate_ranges(results)
 
+        generated_results = generate_results(processed_results)
+
         plot_val(trace, trace_k, processed_results, save_figure=True, fig_name=datafile.split('.')[0])
+        plot_generated_results(trace, trace_k, generated_results, save_figure=True, fig_name=datafile.split('.')[0]+"_generated")
 
     end_time = datetime.datetime.now()
     time_delta = end_time - start_time
