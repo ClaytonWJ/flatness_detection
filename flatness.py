@@ -13,18 +13,14 @@ def remove_duplicate_ranges(results):
     :param results:
     :return: result dictionary in form {"<starting index>": [(<min index>, <start index>, <max index>), # indexes]
     '''
-    # convert the input results into a lists with the starting index and a range between the min and max index of the
-    # flat area
-    indexes = [[idx, range(results[idx][0][0], results[idx][0][2]),
-                           results[idx][1]] for idx in results.keys()]
     good_idxs = {}
     # Check if any result's range is contained completely within any of the other results. If so, remove it as its
-    # a redundant result  
-    for i in indexes:
-        if not any([ranges[1] for ranges in indexes if (not ranges == i and
-                                                        i[1][0] in ranges[1] and
-                                                        i[1][-1] in ranges[1])]):
-            good_idxs[i[0]] = results[i[0]]
+    # a redundant result
+    result_ranges = [range(results[idx][0][0], results[idx][0][2]) for idx in results]
+    for idx in results:
+        c_range = range(results[idx][0][0], results[idx][0][2])
+        if not any(ranges for ranges in result_ranges if (not ranges == c_range and c_range[0] in ranges and c_range[-1] in ranges)):
+            good_idxs[idx] = results[idx] 
 
     # Return the filtered results in a dictionary format
     return good_idxs
@@ -64,52 +60,7 @@ def print_results(results):
             print("Indexes: " + str(entry[1]))
             print("Buffer Size: " + str(entry[2]))
 
-def plot_generated_results(trace, k_r, results, save_figure=False, fig_name="flatness", fig_type="png"):
-    '''
-    Function to plot the results of the algorithm using matplotlib. The function will create a line plot of the original
-    data (x = trace number, y = Plot parameter) and plot the indexes identified as flat overtop the original data in red.
-    :param trace: List of Trace Numbers
-    :param k_r: List of Values
-    :param results: Result dictionary from flatness algorithm
-    :return:
-    '''
-    # data_points_dic = {}
-    # data_points = []
-
-    x_points = trace
-    y_points = k_r
-
-    plt.figure(figsize=(16,8))
-
-    plt.title("Flatness Detection")
-    plt.xlabel("Trace")
-    plt.ylabel("K_r")
-    plt.ylim((0,5))
-
-    plt.plot(x_points, y_points)
-
-    print (results)
-    if results.get('max'):
-        idx = results['max'][0]
-        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='r')
-    if results.get('min'):
-        idx = results['min'][0]
-        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='yellow')
-    if results.get('average'):
-        idx = results['average'][0]
-        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='tab:orange')
-    if results.get('longest'):
-        idx = results['longest'][0]
-        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='c')
-
-    if save_figure:
-        plt.savefig(fig_name + "." + fig_type)
-    else:
-        plt.show()
-
-    plt.close()
-
-def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_type="png"):
+def plot_val(trace, k_r, results, generated_results={}, save_figure=False, fig_name="flatness", fig_type="png"):
     '''
     Function to plot the results of the algorithm using matplotlib. The function will create a line plot of the original
     data (x = trace number, y = Plot parameter) and plot the indexes identified as flat overtop the original data in red.
@@ -135,6 +86,19 @@ def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_ty
     plt.plot(x_points, y_points)
     for seg in segments:
         plt.plot(x_points[seg[0]:seg[1]], y_points[seg[0]:seg[1]], color='r')
+
+    if generated_results.get('longest'):
+        idx = generated_results['longest'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='c')
+    if generated_results.get('max'):
+        idx = generated_results['max'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='r')
+    if generated_results.get('min'):
+        idx = generated_results['min'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='yellow')
+    if generated_results.get('average'):
+        idx = generated_results['average'][0]
+        plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='tab:orange')
 
     if save_figure:
         plt.savefig(fig_name + "." + fig_type)
@@ -255,8 +219,7 @@ if __name__ == "__main__":
 
         generated_results = generate_results(processed_results)
 
-        plot_val(trace, trace_k, processed_results, save_figure=True, fig_name=datafile.split('.')[0])
-        plot_generated_results(trace, trace_k, generated_results, save_figure=True, fig_name=datafile.split('.')[0]+"_generated")
+        plot_val(trace, trace_k, processed_results, generated_results=generated_results, save_figure=True, fig_name=datafile.split('.')[0])
 
     end_time = datetime.datetime.now()
     time_delta = end_time - start_time
