@@ -174,7 +174,7 @@ def flatness (inputTrace, indexs, mode="restrictive"):
                         else:
                             left = False
                 # remove the +/- from left and right index because it always ends on a failed check
-                result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer), sum(buffer)/len(buffer)])
+                result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer), sum([abs(val) for val in buffer])/len(buffer)])
                 # set idx to the last right index + buffer size so the main loop checks the next new points in the dataset
                 idx = r_idx + buffer_size - 1
             # Increment main loop index
@@ -220,15 +220,21 @@ if __name__ == "__main__":
 
         indexs = list(range(0,len(trace_k)))
 
+        print("*--------- Processing data from {} ---------*".format(fl))
+
         results = eval(algorithm)(trace_k, indexs)
 
-        processed_results = remove_duplicate_ranges(results)
+        if not results:
+            print("RUN HAS FAILED TO FIND ANYTHING!")
+        else:
+            processed_results = remove_duplicate_ranges(results)
 
-        generated_results = generate_results(processed_results)
+            generated_results = generate_results(processed_results)
 
-        plot_val(trace, trace_k, processed_results, generated_results=generated_results, save_figure=True, fig_name=datafile.split('.')[0])
+            plot_val(trace, trace_k, processed_results, generated_results=generated_results, save_figure=True, fig_name=datafile.split('.')[0])
 
     end_time = datetime.datetime.now()
     time_delta = end_time - start_time
     print ("S: {} - E: {}\nRun time: {:.2f}s".format(start_time, end_time, (time_delta.total_seconds())))
+    print ("Processed {} files...".format(len(in_files)))
     
