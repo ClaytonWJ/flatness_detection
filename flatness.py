@@ -60,7 +60,7 @@ def print_results(results):
             print("Indexes: " + str(entry[1]))
             print("Buffer Size: " + str(entry[2]))
 
-def plot_val(trace, k_r, results, generated_results={}, save_figure=False, fig_name="flatness", fig_type="png"):
+def plot_val(trace, k_r, results, generated_results={}, save_figure=False, **kwargs):
     '''
     Function to plot the results of the algorithm using matplotlib. The function will create a line plot of the original
     data (x = trace number, y = Plot parameter) and plot the indexes identified as flat overtop the original data in red.
@@ -69,8 +69,12 @@ def plot_val(trace, k_r, results, generated_results={}, save_figure=False, fig_n
     :param results: Result dictionary from flatness algorithm
     :return:
     '''
-    # data_points_dic = {}
-    # data_points = []
+
+    fig_name = kwargs.get('fig_name', "flatness")
+    fig_type = kwargs.get('fig_type', "png")
+    buffer_size = kwargs.get('buffer_size', None)
+    threshold = kwargs.get('threshold', None)
+
     segments = [(results[x][0][0], results[x][0][2]) for x in results]
 
     x_points = trace
@@ -78,7 +82,7 @@ def plot_val(trace, k_r, results, generated_results={}, save_figure=False, fig_n
 
     plt.figure(figsize=(16,8))
 
-    plt.title("Flatness Detection")
+    plt.title("Flatness Detection - Buffer: {}, Threshold: {}".format(buffer_size, threshold))
     plt.xlabel("Trace")
     plt.ylabel("K_r")
     plt.ylim((0,5))
@@ -181,7 +185,7 @@ def flatness (inputTrace, indexs, mode="restrictive"):
             idx += 1
             
         if result:
-            return result
+            return result, buffer_size, threshold
         else:
             print("*--------- Failed to find any flat areas ---------*")
 
@@ -192,8 +196,8 @@ if __name__ == "__main__":
 
     algorithm = "flatness"
 
-    if len(args) == 2 and args[1] == "md":
-        algorithm = "flatness_mean_diff"
+    # if len(args) == 2 and args[1] == "md":
+    #     algorithm = "flatness_mean_diff"
 
     print('='*45)
     print('=' + ' '*15 + 'Starting Run' + ' '*16 + '=')
@@ -227,11 +231,14 @@ if __name__ == "__main__":
         if not results:
             print("RUN HAS FAILED TO FIND ANYTHING!")
         else:
+            # unpack the results
+            results, buffer_size, threshold = results
             processed_results = remove_duplicate_ranges(results)
 
             generated_results = generate_results(processed_results)
 
-            plot_val(trace, trace_k, processed_results, generated_results=generated_results, save_figure=True, fig_name=datafile.split('.')[0])
+            plot_val(trace, trace_k, processed_results, generated_results=generated_results, save_figure=True,
+                     fig_name=datafile.split('.')[0], buffer_size=buffer_size, threshold=threshold)
 
     end_time = datetime.datetime.now()
     time_delta = end_time - start_time
