@@ -14,7 +14,7 @@ The results are then processed to remove any duplicate areas / flat area that ar
  - Yellow is the minimum average value for flat areas
  - Cyan is the longest flat area (# of points)
 
-#####Plot of PDP data collected over a new asphalt patch. The line covers a section of old asphalt, which transitions to the patch, then back to old asphalt
+##### Plot of PDP data collected over a new asphalt patch. The line covers a section of old asphalt, which transitions to the patch, then back to old asphalt
 ![example_plot1](Images/example_plot1.png?raw=true)
 
 
