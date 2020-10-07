@@ -132,7 +132,7 @@ def flatness (inputTrace, indexs, mode="restrictive"):
     flatness_tolerances = {"restrictive": [(20, 0.05), (20, 0.1), (10, 0.05), (10, 0.1), (5, 0.1)]}
 
     for buffer_size, threshold in flatness_tolerances[mode]:
-        print("*--------- Determining flat areas using Buffer size: {} and Threshold: {} ---------*".format(buffer_size, threshold))
+        # print("*--------- Determining flat areas using Buffer size: {} and Threshold: {} ---------*".format(buffer_size, threshold))
         idx = buffer_size
         while (idx in indexs[buffer_size:]):
             # Set the buffer to the x number of points before the current index
