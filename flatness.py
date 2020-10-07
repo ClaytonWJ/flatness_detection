@@ -85,7 +85,7 @@ def plot_val(trace, k_r, results, generated_results={}, save_figure=False, **kwa
     plt.title("Flatness Detection - Buffer: {}, Threshold: {}".format(buffer_size, threshold))
     plt.xlabel("Trace")
     plt.ylabel("K_r")
-    plt.ylim((0,5))
+    plt.ylim((0, 8))
 
     plt.plot(x_points, y_points)
 
@@ -138,7 +138,7 @@ def flatness (inputTrace, indexs, mode="restrictive"):
             # Set the buffer to the x number of points before the current index
             buffer = inputTrace[(idx-buffer_size):idx]
             # number of standard deviation to consider valid
-            stdv_factor = 3
+            stdv_factor = 2
             # calculate the standard deviation on the point within the buffer and check if it meats the threshold condition
             stdev = statistics.stdev(buffer)
             if stdev < threshold:

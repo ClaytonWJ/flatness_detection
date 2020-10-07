@@ -8,10 +8,23 @@ equal to or less than 2 standard deviations away from the mean of the original b
 
 The results are then processed to remove any duplicate areas / flat area that are completely contained with another and it generates a final result which is up to 4 flat areas within the dataset. The 4 results are the minimum average value flat area, the average average value flat area, the maximum average value flat area and the longest flat area.
 
-![example_plot1](example_plot1.png?raw=true)
+#### Each plot can show up to 4 flat areas, each with a different colour to represent them. 
+ - Red is the maximum average value for flat areas
+ - Orange is the average of average values for flat areas
+ - Yellow is the minimum average value for flat areas
+ - Cyan is the longest flat area (# of points)
+
+#####Plot of PDP data collected over a new asphalt patch. The line covers a section of old asphalt, which transitions to the patch, then back to old asphalt
+![example_plot1](Images/example_plot1.png?raw=true)
 
 
-![example_plot2](example_plot2.png?raw=true)
+##### Plot with more "noisy" data
+![example_plot2](Images/example_plot2.png?raw=true)
 
 
-![example_plot3](example_plot3.png?raw=true)
+#### Plot with only 1 flat area found
+![example_plot3](Images/example_plot3.png?raw=true)
+
+
+#### Plot of data collected during bench test indoors
+![example_plot3](Images/example_plot4.png?raw=true)
