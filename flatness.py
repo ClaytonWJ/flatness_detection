@@ -13,21 +13,33 @@ def remove_duplicate_ranges(results):
     :param results:
     :return: result dictionary in form {"<starting index>": [(<min index>, <start index>, <max index>), # indexes]
     '''
-    # convert the input results into a lists with the starting index and a range between the min and max index of the
-    # flat area
-    indexes = [[idx, range(results[idx][0][0], results[idx][0][2]),
-                           results[idx][1]] for idx in results.keys()]
     good_idxs = {}
     # Check if any result's range is contained completely within any of the other results. If so, remove it as its
     # a redundant result
-    for i in indexes:
-        if not any([ranges[1] for ranges in indexes if (not ranges == i and
-                                                        i[1][0] in ranges[1] and
-                                                        i[1][-1] in ranges[1])]):
-            good_idxs[i[0]] = [(i[1][0], i[0], i[1][-1]), i[2]]
+    result_ranges = [range(results[idx][0][0], results[idx][0][2]) for idx in results]
+    for idx in results:
+        c_range = range(results[idx][0][0], results[idx][0][2])
+        if not any(ranges for ranges in result_ranges if (not ranges == c_range and c_range[0] in ranges and c_range[-1] in ranges)):
+            good_idxs[idx] = results[idx] 
 
     # Return the filtered results in a dictionary format
     return good_idxs
+
+
+def generate_results(results):
+
+    longest_flat_area = max(results, key=lambda k: results[k][1])
+    max_flat_area = max(results, key=lambda k: results[k][3])
+    min_flat_area = min(results, key=lambda k: results[k][3])
+
+    average_val = sum([results[val][3] for val in results]) / len(results)
+
+    average_flat_area = min(results, key=lambda k: abs(results[k][3] - average_val))
+
+    return {'max': results[max_flat_area], 
+            'min': results[min_flat_area], 
+            'average': results[average_flat_area],
+            'longest': results[longest_flat_area]}
 
 
 def print_results(results):
@@ -48,7 +60,7 @@ def print_results(results):
             print("Indexes: " + str(entry[1]))
             print("Buffer Size: " + str(entry[2]))
 
-def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_type="png"):
+def plot_val(trace, k_r, results, generated_results={}, save_figure=False, **kwargs):
     '''
     Function to plot the results of the algorithm using matplotlib. The function will create a line plot of the original
     data (x = trace number, y = Plot parameter) and plot the indexes identified as flat overtop the original data in red.
@@ -57,8 +69,12 @@ def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_ty
     :param results: Result dictionary from flatness algorithm
     :return:
     '''
-    # data_points_dic = {}
-    # data_points = []
+
+    fig_name = kwargs.get('fig_name', "flatness")
+    fig_type = kwargs.get('fig_type', "png")
+    buffer_size = kwargs.get('buffer_size', None)
+    threshold = kwargs.get('threshold', None)
+
     segments = [(results[x][0][0], results[x][0][2]) for x in results]
 
     x_points = trace
@@ -66,14 +82,29 @@ def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_ty
 
     plt.figure(figsize=(16,8))
 
-    plt.title("Flatness Detection")
+    plt.title("Flatness Detection - Buffer: {}, Threshold: {}".format(buffer_size, threshold))
     plt.xlabel("Trace")
     plt.ylabel("K_r")
-    plt.ylim((0,5))
+    plt.ylim((0, 8))
 
     plt.plot(x_points, y_points)
-    for seg in segments:
-        plt.plot(x_points[seg[0]:seg[1]], y_points[seg[0]:seg[1]], color='r')
+
+    if generated_results:
+        if generated_results.get('longest'):
+            idx = generated_results['longest'][0]
+            plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='c')
+        if generated_results.get('max'):
+            idx = generated_results['max'][0]
+            plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='r')
+        if generated_results.get('min'):
+            idx = generated_results['min'][0]
+            plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='yellow')
+        if generated_results.get('average'):
+            idx = generated_results['average'][0]
+            plt.plot(x_points[idx[0]:idx[2]], y_points[idx[0]:idx[2]], color='tab:orange')
+    else:
+        for seg in segments:
+            plt.plot(x_points[seg[0]:seg[1]], y_points[seg[0]:seg[1]], color='r')
 
     if save_figure:
         plt.savefig(fig_name + "." + fig_type)
@@ -82,7 +113,7 @@ def plot_val(trace, k_r, results, save_figure=False, fig_name="flatness", fig_ty
 
     plt.close()
 
-def flatness (inputTrace, indexs):
+def flatness (inputTrace, indexs, mode="restrictive"):
     '''
     Algorithm designed to identify flat areas within a pdp line dataset. The algorithm uses a set buffer size and a
     threshold for standard deviation to identify flat areas. If the points within the buffer are under the threshold it
@@ -94,64 +125,69 @@ def flatness (inputTrace, indexs):
     :return:
     '''
     result = {}
+    # The flatness tolerances contains tuples of value pairs, buffer size (first value) and threshold (second value)
     # Buffer size controls and number of points that are checked at once. It is the minimum # of points that used to
-    # check if an area is considered flat
-    buffer_size = 20
+    # determine if an area is considered flat
     # threshold determines the standard deviation value that is checked to determine if an area is flat
-    threshold = 0.05
-    idx = buffer_size
+    flatness_tolerances = {"restrictive": [(20, 0.05), (20, 0.1), (10, 0.05), (10, 0.1), (5, 0.1)]}
 
-    while (idx in indexs[buffer_size:]):
-        # Set the buffer to the x number of points before the current index
-        buffer = inputTrace[(idx-buffer_size):idx]
-        # number of standard deviation to consider valid
-        stdv_factor = 3
-        # calculate the standard deviation on the point within the buffer and check if it meats the threshold condition
-        stdev = statistics.stdev(buffer)
-        if stdev < threshold:
-            # left and right used to track if buffer should expand in either direction
-            left = True
-            right = True
-            # index of expanded buffer on right and left
-            r_idx = idx + 1
-            l_idx = idx-buffer_size
+    for buffer_size, threshold in flatness_tolerances[mode]:
+        # print("*--------- Determining flat areas using Buffer size: {} and Threshold: {} ---------*".format(buffer_size, threshold))
+        idx = buffer_size
+        while (idx in indexs[buffer_size:]):
+            # Set the buffer to the x number of points before the current index
+            buffer = inputTrace[(idx-buffer_size):idx]
+            # number of standard deviation to consider valid
+            stdv_factor = 2
+            # calculate the standard deviation on the point within the buffer and check if it meats the threshold condition
+            stdev = statistics.stdev(buffer)
+            if stdev < threshold:
+                # left and right used to track if buffer should expand in either direction
+                left = True
+                right = True
+                # index of expanded buffer on right and left
+                r_idx = idx
+                l_idx = idx-buffer_size
 
-            mean = sum(buffer)/len(buffer)
-            # Calculate 2 standard deviations above and below and use it as the range of accepted values
-            allowed_range = (mean - stdv_factor*threshold, mean + stdv_factor*threshold)
-            while left or right:
-                # Expansion loop. This loop will attempt to add points to the existing buffer based on if the new point
-                # is within the allowed_range. When it cannot expand further it returns the resulting list of points
-                if right:
-                    if r_idx >= len(inputTrace):
-                        # stop expanding right if passed last index
-                        right = False
-                        continue
-                    # if the value is within the allowed_range add it to the buffer and move the right index
-                    if allowed_range[0] <= inputTrace[r_idx] <= allowed_range[1]:
-                        buffer.append(inputTrace[r_idx])
+                mean = sum(buffer)/len(buffer)
+                # Calculate 2 standard deviations above and below and use it as the range of accepted values
+                allowed_range = (mean - stdv_factor*threshold, mean + stdv_factor*threshold)
+                while left or right:
+                    # Expansion loop. This loop will attempt to add points to the existing buffer based on if the new point
+                    # is within the allowed_range. When it cannot expand further it returns the resulting list of points
+                    if right:
                         r_idx += 1
-                    else:
-                        right = False
-                if left:
-                    if l_idx < 0:
-                        # stop expanding left if past first index
-                        left = False
-                        continue
-                    # if the value is within the allowed_range add it to the buffer and move the left index
-                    if allowed_range[0] <= inputTrace[l_idx] <= allowed_range[1]:
-                        buffer.append(inputTrace[l_idx])
-                        l_idx -= 1
-                    else:
-                        left = False
-            # remove the +/- from left and right index because it always ends on a failed check
-            result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer)])
-            # set idx to the last right index + buffer size so the main loop checks the next new points in the dataset
-            idx = r_idx + buffer_size - 1
-        # Increment main loop index
-        idx += 1
-        
-    return result
+                        if r_idx >= len(inputTrace):
+                            # stop expanding right if passed last index
+                            right = False
+                            continue
+                        # if the value is within the allowed_range add it to the buffer and move the right index
+                        if allowed_range[0] <= inputTrace[r_idx] <= allowed_range[1]:
+                            buffer.append(inputTrace[r_idx])
+                        else:
+                            right = False
+                    if left:
+                        l_idx -=1
+                        if l_idx < 0:
+                            # stop expanding left if past first index
+                            left = False
+                            continue
+                        # if the value is within the allowed_range add it to the buffer and move the left index
+                        if allowed_range[0] <= inputTrace[l_idx] <= allowed_range[1]:
+                            buffer.append(inputTrace[l_idx])
+                        else:
+                            left = False
+                # remove the +/- from left and right index because it always ends on a failed check
+                result[idx] = ([(l_idx+1, idx, r_idx-1), len(buffer), statistics.stdev(buffer), sum([abs(val) for val in buffer])/len(buffer)])
+                # set idx to the last right index + buffer size so the main loop checks the next new points in the dataset
+                idx = r_idx + buffer_size - 1
+            # Increment main loop index
+            idx += 1
+            
+        if result:
+            return result, buffer_size, threshold
+        else:
+            print("*--------- Failed to find any flat areas ---------*")
 
 
 if __name__ == "__main__":
@@ -160,8 +196,8 @@ if __name__ == "__main__":
 
     algorithm = "flatness"
 
-    if len(args) == 2 and args[1] == "md":
-        algorithm = "flatness_mean_diff"
+    # if len(args) == 2 and args[1] == "md":
+    #     algorithm = "flatness_mean_diff"
 
     print('='*45)
     print('=' + ' '*15 + 'Starting Run' + ' '*16 + '=')
@@ -188,13 +224,24 @@ if __name__ == "__main__":
 
         indexs = list(range(0,len(trace_k)))
 
+        print("*--------- Processing data from {} ---------*".format(fl))
+
         results = eval(algorithm)(trace_k, indexs)
 
-        processed_results = remove_duplicate_ranges(results)
+        if not results:
+            print("RUN HAS FAILED TO FIND ANYTHING!")
+        else:
+            # unpack the results
+            results, buffer_size, threshold = results
+            processed_results = remove_duplicate_ranges(results)
 
-        plot_val(trace, trace_k, processed_results, save_figure=True, fig_name=datafile.split('.')[0])
+            generated_results = generate_results(processed_results)
+
+            plot_val(trace, trace_k, processed_results, generated_results=generated_results, save_figure=True,
+                     fig_name=datafile.split('.')[0], buffer_size=buffer_size, threshold=threshold)
 
     end_time = datetime.datetime.now()
     time_delta = end_time - start_time
     print ("S: {} - E: {}\nRun time: {:.2f}s".format(start_time, end_time, (time_delta.total_seconds())))
+    print ("Processed {} files...".format(len(in_files)))
     
